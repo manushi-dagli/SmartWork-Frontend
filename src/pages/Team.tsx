@@ -1,14 +1,21 @@
+import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { listEmployees } from "@/api/employees.api";
 import { listRoles } from "@/api/roles.api";
+import { useAuth } from "@/hooks/useAuth";
 import type { EmployeeListItem, AppRole } from "@/types/team";
 import { tasks } from "@/data/mockData";
 import type { Task } from "@/data/mockData";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Mail } from "lucide-react";
+import { Mail, Plus } from "lucide-react";
 import { useState } from "react";
+
+/** Only super admins and admins can add team members (create users). */
+function canAddTeamMember(roleValue: string | undefined): boolean {
+  return roleValue === "SUPER_ADMIN" || roleValue === "ADMIN";
+}
 
 function getInitials(firstName: string, lastName: string): string {
   const f = firstName?.trim().charAt(0) ?? "";
@@ -29,7 +36,10 @@ function getTasksForEmployeeIndex(employeeIndex: number): Task[] {
 }
 
 export default function Team() {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [selectedRoleId, setSelectedRoleId] = useState<string | null>(null);
+  const canAdd = canAddTeamMember(user?.roleValue);
 
   const { data: rolesData, isLoading: rolesLoading } = useQuery({
     queryKey: ["roles"],
@@ -53,11 +63,19 @@ export default function Team() {
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">Team Management</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          Manage your team members and their assignments
-        </p>
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">Team Management</h1>
+          <p className="text-muted-foreground text-sm mt-1">
+            Manage your team members and their assignments
+          </p>
+        </div>
+        {canAdd && (
+          <Button onClick={() => navigate("/team/new")}>
+            <Plus className="h-4 w-4 mr-2" />
+            Add team member
+          </Button>
+        )}
       </div>
 
       {/* Role filter from backend */}

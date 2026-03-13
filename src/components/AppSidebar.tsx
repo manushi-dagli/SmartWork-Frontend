@@ -1,4 +1,4 @@
-import { LayoutDashboard, ListTodo, Users, BarChart3, Building2, LogOut, User, Settings, FileQuestion } from "lucide-react";
+import { Users, Building2, LogOut, User, Settings } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,10 +18,10 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
 const navItems = [
-  { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  { title: "Tasks", url: "/tasks", icon: ListTodo },
+  // { title: "Dashboard", url: "/", icon: LayoutDashboard },
+  // { title: "Tasks", url: "/tasks", icon: ListTodo },
   { title: "Team", url: "/team", icon: Users },
-  { title: "Analytics", url: "/analytics", icon: BarChart3 },
+  // { title: "Analytics", url: "/analytics", icon: BarChart3 },
 ];
 
 export function AppSidebar() {
@@ -67,7 +67,7 @@ export function AppSidebar() {
                   >
                     <NavLink
                       to={item.url}
-                      end={item.url === "/"}
+                      end={false}
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     >
                       <item.icon className="h-4 w-4" />
@@ -76,7 +76,7 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
-              <SidebarMenuItem>
+              {/* <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
                   isActive={location.pathname.startsWith("/inquiries")}
@@ -90,7 +90,7 @@ export function AppSidebar() {
                     <span>Inquiries</span>
                   </NavLink>
                 </SidebarMenuButton>
-              </SidebarMenuItem>
+              </SidebarMenuItem> */}
               {isSuperAdmin && (
                 <SidebarMenuItem>
                   <SidebarMenuButton

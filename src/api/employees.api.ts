@@ -1,9 +1,14 @@
 /**
- * Smart Work backend: GET /api/employees (list with optional roleId filter).
+ * Smart Work backend: GET /api/employees (list), POST /api/employees (create), check-username.
  */
 
 import { apiRequest } from "@/api/client";
 import type { PaginatedEmployees } from "@/types/team";
+
+interface ApiSuccess<T> {
+  data: T;
+  success: true;
+}
 
 export interface ListEmployeesParams {
   page?: number;
@@ -28,5 +33,45 @@ export async function listEmployees(params: ListEmployeesParams = {}): Promise<P
   const qs = search.toString();
   const path = qs ? `/api/employees?${qs}` : "/api/employees";
   const res = await apiRequest<ListEmployeesResponse>(path);
+  return res.data;
+}
+
+/** Employee returned by POST /api/employees (create). */
+export interface CreateEmployeeResponse {
+  id: string;
+  firstName: string;
+  lastName: string;
+  email: string | null;
+  roleId: string | null;
+  [key: string]: unknown;
+}
+
+export interface CreateEmployeeBody {
+  username?: string | null;
+  password?: string | null;
+  firstName: string;
+  middleName?: string | null;
+  lastName: string;
+  email?: string | null;
+  roleId?: string | null;
+}
+
+export async function createEmployee(body: CreateEmployeeBody): Promise<CreateEmployeeResponse> {
+  const res = await apiRequest<ApiSuccess<CreateEmployeeResponse>>("/api/employees", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+  return res.data;
+}
+
+export async function checkUsernameAvailable(
+  username: string,
+  excludeId?: string
+): Promise<{ available: boolean }> {
+  const params = new URLSearchParams({ username: username.trim() });
+  if (excludeId) params.set("excludeId", excludeId);
+  const res = await apiRequest<ApiSuccess<{ available: boolean }>>(
+    `/api/employees/check-username?${params.toString()}`
+  );
   return res.data;
 }
