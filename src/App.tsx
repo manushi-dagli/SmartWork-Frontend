@@ -10,6 +10,7 @@ import { SuperAdminOrAdminRoute } from "@/components/SuperAdminOrAdminRoute";
 import Tasks from "./pages/Tasks";
 import Team from "./pages/Team";
 import Clients from "./pages/Clients";
+import Firms from "./pages/Firms";
 import Profile from "./pages/Profile";
 import Config from "./pages/Config";
 import Inquiries from "./pages/Inquiries";
@@ -18,6 +19,7 @@ import CreateTeamMember from "./pages/CreateTeamMember";
 import InquiryDetail from "./pages/InquiryDetail";
 import Assignments from "./pages/Assignments";
 import AssignmentDetail from "./pages/AssignmentDetail";
+import Analytics from "./pages/Analytics";
 import Dashboard from "./pages/Dashboard";
 import Login from "./pages/Login";
 import NotFound from "./pages/NotFound";
@@ -47,9 +49,10 @@ const App = () => (
               <Route path="/team" element={<Team />} />
               <Route path="/team/new" element={<CreateTeamMember />} />
               <Route path="/clients" element={<Clients />} />
+              <Route path="/firms" element={<Firms />} />
               <Route path="/assignments" element={<Assignments />} />
               <Route path="/assignments/:id" element={<AssignmentDetail />} />
-              {/* <Route path="/analytics" element={<Analytics />} /> */}
+              <Route path="/analytics" element={<Analytics />} />
               <Route path="/profile" element={<Profile />} />
               <Route path="/inquiries" element={<Inquiries />} />
               <Route path="/inquiries/new" element={<CreateInquiry />} />

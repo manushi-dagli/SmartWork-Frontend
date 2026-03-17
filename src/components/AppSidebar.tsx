@@ -1,4 +1,4 @@
-import { Users, Building2, LogOut, User, Settings, UserPlus, FileQuestion, Briefcase, LayoutDashboard } from "lucide-react";
+import { Users, Building2, Building, LogOut, User, Settings, UserPlus, FileQuestion, Briefcase, LayoutDashboard, BarChart3 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
@@ -21,7 +21,8 @@ const navItems = [
   { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Team", url: "/team", icon: Users },
   { title: "Clients", url: "/clients", icon: UserPlus },
-  // { title: "Analytics", url: "/analytics", icon: BarChart3 },
+  { title: "Firms", url: "/firms", icon: Building },
+  { title: "Analytics", url: "/analytics", icon: BarChart3 },
 ];
 
 export function AppSidebar() {

@@ -29,6 +29,7 @@ export type TaskRequestStatus = "PENDING" | "ACCEPTED" | "REJECTED";
 export interface TaskRequest {
   id: string;
   status: TaskRequestStatus;
+  firmId: string | null;
   taskId: string;
   subtaskId: string | null;
   contactName: string | null;
@@ -66,6 +67,7 @@ export interface DocumentForTaskRequest {
 }
 
 export interface CreateTaskRequestDto {
+  firmId?: string | null;
   taskId: string;
   subtaskId?: string | null;
   contactName?: string | null;
@@ -80,6 +82,7 @@ export interface CreateTaskRequestDto {
 }
 
 export interface UpdateTaskRequestDto {
+  firmId?: string | null;
   taskId?: string;
   subtaskId?: string | null;
   contactName?: string | null;

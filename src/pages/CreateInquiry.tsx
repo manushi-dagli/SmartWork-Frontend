@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { taskRequestsApi, type SubtaskWithTask } from "@/api/taskRequests.api";
+import { firmsApi } from "@/api/firms.api";
 import { createTaskRequestFormSchema, type CreateTaskRequestFormValues } from "@/lib/validations";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -43,6 +44,7 @@ export default function CreateInquiry() {
   const form = useForm<CreateTaskRequestFormValues>({
     resolver: zodResolver(createTaskRequestFormSchema),
     defaultValues: {
+      firmId: "",
       taskId: "",
       subtaskId: "",
       contactName: "",
@@ -57,6 +59,10 @@ export default function CreateInquiry() {
     },
   });
 
+  const { data: firms = [], isLoading: firmsLoading } = useQuery({
+    queryKey: ["firms"],
+    queryFn: () => firmsApi.listFirms(),
+  });
   const { data: subtasksWithTask = [], isLoading: subtasksLoading } = useQuery({
     queryKey: ["subtasks-with-task"],
     queryFn: () => taskRequestsApi.listSubtasksWithTask(),
@@ -75,6 +81,7 @@ export default function CreateInquiry() {
   const onSubmit = async (values: CreateTaskRequestFormValues) => {
     try {
       const taskRequest = await taskRequestsApi.createTaskRequest({
+        firmId: values.firmId?.trim() || null,
         taskId: values.taskId,
         subtaskId: values.subtaskId?.trim() || null,
         contactName: values.contactName?.trim() || null,
@@ -124,6 +131,35 @@ export default function CreateInquiry() {
                   {form.formState.errors.root.message}
                 </div>
               )}
+              <FormField
+                control={form.control}
+                name="firmId"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Firm (optional)</FormLabel>
+                    <Select
+                      value={field.value && field.value.trim() !== "" ? field.value : "__none__"}
+                      onValueChange={(val) => field.onChange(val === "__none__" ? "" : val)}
+                      disabled={firmsLoading}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select firm" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="__none__">— No firm —</SelectItem>
+                        {firms.map((firm) => (
+                          <SelectItem key={firm.id} value={firm.id}>
+                            {firm.name}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
               <FormField
                 control={form.control}
                 name="contactName"

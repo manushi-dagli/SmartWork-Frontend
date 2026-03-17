@@ -27,6 +27,7 @@ export interface Client {
   bankDetails: unknown;
   dsc: string | null;
   otp: string | null;
+  firmId: string | null;
   familyId: string | null;
   taskId: string | null;
   subtaskId: string | null;
@@ -52,6 +53,7 @@ export interface CreateClientBody {
   email2?: string | null;
   pan?: string | null;
   gst?: string | null;
+  firmId?: string | null;
   familyId?: string | null;
   taskId?: string | null;
   subtaskId?: string | null;
@@ -75,6 +77,7 @@ export interface UpdateClientBody {
   email2?: string | null;
   pan?: string | null;
   gst?: string | null;
+  firmId?: string | null;
   familyId?: string | null;
   taskId?: string | null;
   subtaskId?: string | null;

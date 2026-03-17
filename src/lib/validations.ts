@@ -66,8 +66,9 @@ export const optionalPhoneSchema = z
     { message: `Phone must be ${PHONE_MIN}-${PHONE_MAX} characters (digits, +, spaces allowed)` }
   );
 
-/** Create task request form schema — taskId from subtask; optional subtaskId; terms and contact optional */
+/** Create task request form schema — taskId from subtask; optional subtaskId; optional firmId; terms and contact optional */
 export const createTaskRequestFormSchema = z.object({
+  firmId: z.string().optional(),
   taskId: z.string().min(1, "Please select a subtask (task is set automatically)"),
   subtaskId: z.string().optional(),
   contactName: z.string().optional(),

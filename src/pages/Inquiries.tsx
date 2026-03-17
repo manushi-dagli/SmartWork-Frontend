@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { taskRequestsApi } from "@/api/taskRequests.api";
 import type { TaskRequest, TaskRequestStatus } from "@/api/taskRequests.api";
+import { firmsApi } from "@/api/firms.api";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import {
@@ -63,7 +64,12 @@ export default function Inquiries() {
     queryKey: ["task-types"],
     queryFn: () => taskRequestsApi.listTaskTypes(),
   });
+  const { data: firms = [] } = useQuery({
+    queryKey: ["firms"],
+    queryFn: () => firmsApi.listFirms(),
+  });
   const typeNameById = Object.fromEntries(taskTypes.map((t) => [t.id, t.name]));
+  const firmNameById = Object.fromEntries(firms.map((f) => [f.id, f.name]));
 
   return (
     <div className="space-y-6">
@@ -124,6 +130,7 @@ export default function Inquiries() {
             <TableHeader>
               <TableRow>
                 <TableHead>Contact</TableHead>
+                <TableHead>Firm</TableHead>
                 <TableHead>Task (service)</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
@@ -139,6 +146,9 @@ export default function Inquiries() {
                 >
                   <TableCell className="font-medium">
                     {tr.contactName || tr.contactEmail || "—"}
+                  </TableCell>
+                  <TableCell className="text-muted-foreground">
+                    {tr.firmId ? (firmNameById[tr.firmId] ?? "—") : "—"}
                   </TableCell>
                   <TableCell>{typeNameById[tr.taskId] ?? "—"}</TableCell>
                   <TableCell>
