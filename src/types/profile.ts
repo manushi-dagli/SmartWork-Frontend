@@ -32,15 +32,10 @@ export interface GetProfileResponse {
   employee: ProfileEmployee | SuperAdminProfile;
 }
 
-/** Fields the user can update via PATCH /api/profile (employees only). */
+/** Fields the user can update via PATCH /api/profile (employees only). Only firstName, lastName, profilePicture. */
 export interface UpdateProfileDto {
-  username?: string | null;
   firstName?: string;
-  middleName?: string | null;
   lastName?: string;
-  email?: string | null;
-  phoneNumber?: string | null;
-  address?: string | null;
   /** Data URL (e.g. data:image/jpeg;base64,...) or URL string. */
   profilePicture?: string | null;
 }

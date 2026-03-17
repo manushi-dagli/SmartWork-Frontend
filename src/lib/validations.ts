@@ -66,20 +66,24 @@ export const optionalPhoneSchema = z
     { message: `Phone must be ${PHONE_MIN}-${PHONE_MAX} characters (digits, +, spaces allowed)` }
   );
 
-/** Create inquiry form schema — two contact phones; second optional */
-export const createInquiryFormSchema = z.object({
-  assignmentTypeId: z.string().min(1, "Please select an inquiry type"),
+/** Create task request form schema — taskId from subtask; optional subtaskId; terms and contact optional */
+export const createTaskRequestFormSchema = z.object({
+  taskId: z.string().min(1, "Please select a subtask (task is set automatically)"),
+  subtaskId: z.string().optional(),
   contactName: z.string().optional(),
   contactEmail: optionalEmailSchema.optional(),
   contactPhoneCountryCode: optionalPhoneCountryCodeSchema.optional(),
   contactPhoneNumber: optionalPhoneNumberSchema.optional(),
   contactPhone2CountryCode: optionalPhoneCountryCodeSchema.optional(),
   contactPhone2Number: optionalPhoneNumberSchema.optional(),
+  assignmentTerms: z.string().optional(),
+  paymentTerms: z.string().optional(),
+  paymentCost: z.string().optional(),
 });
 
-export type CreateInquiryFormValues = z.infer<typeof createInquiryFormSchema>;
+export type CreateTaskRequestFormValues = z.infer<typeof createTaskRequestFormSchema>;
 
-/** Contact details (for inquiry detail save) — two contact phones; second optional */
+/** Contact details (for task request detail save) — two contact phones; second optional */
 export const contactDetailsSchema = z.object({
   contactName: z.string().optional(),
   contactEmail: optionalEmailSchema.optional(),

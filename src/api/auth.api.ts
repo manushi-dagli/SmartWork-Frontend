@@ -1,5 +1,5 @@
 /**
- * Employee / super admin auth (Smart Work backend: POST /api/auth/login, GET /api/auth/me, POST /api/auth/logout).
+ * Employee / super admin auth (Smart Work backend: POST /api/auth/login, GET /api/auth/session, POST /api/auth/logout).
  */
 
 import type { AuthUser } from "@/types/auth";
@@ -11,7 +11,7 @@ export interface LoginResponse {
   success: true;
 }
 
-export interface MeResponse {
+export interface SessionResponse {
   data: AuthUser;
   success: true;
 }
@@ -33,14 +33,14 @@ export const authApi = {
     return json as LoginResponse;
   },
 
-  /** Returns current user or null if not authenticated (401). */
-  async getMe(): Promise<AuthUser | null> {
-    const url = `${getBaseUrl()}/api/auth/me`;
+  /** Returns current user or null if not authenticated (401). Used for session restore when no user in store. */
+  async getSession(): Promise<AuthUser | null> {
+    const url = `${getBaseUrl()}/api/auth/session`;
     const res = await fetch(url, { credentials: "include" });
     if (res.status === 401) return null;
     const json = await res.json().catch(() => ({}));
     if (!res.ok) throw new AuthError(res.status, json?.error ?? "Request failed", json?.code);
-    return (json as MeResponse).data;
+    return (json as SessionResponse).data;
   },
 
   async logout(): Promise<void> {

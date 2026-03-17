@@ -26,18 +26,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     if (user) {
       dispatch(setPending(false));
-      authApi
-        .getMe()
-        .then((me) => {
-          if (!cancelled && me) dispatch(setUser({ user: me }));
-        })
-        .catch(() => {});
     } else {
       dispatch(setPending(true));
       authApi
-        .getMe()
-        .then((me) => {
-          if (!cancelled) dispatch(setUser({ user: me ?? null }));
+        .getSession()
+        .then((sessionUser) => {
+          if (!cancelled) dispatch(setUser({ user: sessionUser ?? null }));
         })
         .catch(() => {
           if (!cancelled) dispatch(clearUser());

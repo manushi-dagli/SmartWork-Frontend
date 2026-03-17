@@ -1,4 +1,4 @@
-import { Users, Building2, LogOut, User, Settings } from "lucide-react";
+import { Users, Building2, LogOut, User, Settings, UserPlus, FileQuestion, Briefcase, LayoutDashboard } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { NavLink } from "@/components/NavLink";
 import { useAuth } from "@/hooks/useAuth";
@@ -18,9 +18,9 @@ import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 
 const navItems = [
-  // { title: "Dashboard", url: "/", icon: LayoutDashboard },
-  // { title: "Tasks", url: "/tasks", icon: ListTodo },
+  { title: "Dashboard", url: "/", icon: LayoutDashboard },
   { title: "Team", url: "/team", icon: Users },
+  { title: "Clients", url: "/clients", icon: UserPlus },
   // { title: "Analytics", url: "/analytics", icon: BarChart3 },
 ];
 
@@ -31,6 +31,7 @@ export function AppSidebar() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
   const isSuperAdmin = user?.isSuperAdmin === true;
+  const canSeeTaskConfig = isSuperAdmin || user?.roleValue === "ADMIN";
 
   const handleLogout = async () => {
     await logout();
@@ -76,34 +77,49 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
-              {/* <SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location.pathname === "/assignments"}
+                  tooltip="Assignments"
+                >
+                  <NavLink
+                    to="/assignments"
+                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
+                  >
+                    <Briefcase className="h-4 w-4" />
+                    <span>Assignments</span>
+                  </NavLink>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+              <SidebarMenuItem>
                 <SidebarMenuButton
                   asChild
                   isActive={location.pathname.startsWith("/inquiries")}
-                  tooltip="Inquiry register"
+                tooltip="Inquiries"
+              >
+                <NavLink
+                  to="/inquiries"
+                  activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                 >
-                  <NavLink
-                    to="/inquiries"
-                    activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
-                  >
-                    <FileQuestion className="h-4 w-4" />
-                    <span>Inquiries</span>
+                  <FileQuestion className="h-4 w-4" />
+                  <span>Inquiries</span>
                   </NavLink>
                 </SidebarMenuButton>
-              </SidebarMenuItem> */}
-              {isSuperAdmin && (
+              </SidebarMenuItem>
+              {canSeeTaskConfig && (
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
                     isActive={location.pathname === "/config"}
-                    tooltip="Inquiry config"
+                    tooltip="Task config"
                   >
                     <NavLink
                       to="/config"
                       activeClassName="bg-sidebar-accent text-sidebar-accent-foreground font-medium"
                     >
                       <Settings className="h-4 w-4" />
-                      <span>Inquiry config</span>
+                      <span>Task config</span>
                     </NavLink>
                   </SidebarMenuButton>
                 </SidebarMenuItem>

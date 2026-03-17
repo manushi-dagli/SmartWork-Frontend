@@ -4,7 +4,7 @@ import { getProfile, updateProfile } from "@/api/profile.api";
 import type { ProfileEmployee } from "@/types/profile";
 import { useDispatch } from "react-redux";
 import { setUser } from "@/store/authSlice";
-import { authApi } from "@/api/auth.api";
+import { store } from "@/store";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -12,7 +12,6 @@ import { Label } from "@/components/ui/label";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Camera, Save, X, Pencil } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { validateEmail, validatePhone } from "@/lib/validations";
 
 /** Only fields returned by GET /api/profile. */
 interface ProfileState {
@@ -61,10 +60,9 @@ export default function Profile() {
 
   const updateMutation = useMutation({
     mutationFn: updateProfile,
-    onSuccess: async (updatedEmployee) => {
+    onSuccess: (updatedEmployee) => {
       setEditing(false);
       setAvatarPreview(null);
-      // Update local state immediately so the UI reflects changes without waiting for refetch
       if (updatedEmployee) {
         const emp = updatedEmployee as ProfileEmployee;
         setProfile({
@@ -79,11 +77,25 @@ export default function Profile() {
           roleName: isEmployee(emp) && "roleName" in emp && emp.roleName ? String(emp.roleName) : "",
           profilePicture: isEmployee(emp) && emp.profilePicture ? String(emp.profilePicture) : "",
         });
+        const currentUser = store.getState().auth.user;
+        if (currentUser) {
+          dispatch(
+            setUser({
+              user: {
+                ...currentUser,
+                username: emp.username ?? currentUser.username,
+                email: emp.email ?? currentUser.email,
+                firstName: emp.firstName ?? currentUser.firstName,
+                lastName: emp.lastName ?? currentUser.lastName,
+                roleValue: (emp as ProfileEmployee).roleValue ?? currentUser.roleValue,
+                roleId: "roleId" in emp ? emp.roleId ?? null : currentUser.roleId,
+              },
+            })
+          );
+        }
       }
       toast({ title: "Profile updated", description: "Your changes have been saved." });
       queryClient.invalidateQueries({ queryKey: ["profile"] });
-      const me = await authApi.getMe();
-      if (me) dispatch(setUser({ user: me }));
     },
     onError: (err: Error) => {
       toast({ variant: "destructive", title: "Error", description: err.message ?? "Failed to update profile." });
@@ -118,33 +130,20 @@ export default function Profile() {
   };
 
   const handleSave = () => {
-    const email = draft.email.trim();
-    const phone = draft.phoneNumber.trim();
-    if (email && !validateEmail(email)) {
+    const firstName = draft.firstName.trim();
+    const lastName = draft.lastName.trim();
+    if (!firstName || !lastName) {
       toast({
         variant: "destructive",
-        title: "Invalid email",
-        description: "Please enter a valid email address.",
-      });
-      return;
-    }
-    if (phone && !validatePhone(phone)) {
-      toast({
-        variant: "destructive",
-        title: "Invalid phone",
-        description: "Phone must be 3–20 characters (digits, +, spaces allowed).",
+        title: "Required fields",
+        description: "First name and last name are required.",
       });
       return;
     }
     updateMutation.mutate({
-      username: draft.username.trim() || null,
-      firstName: draft.firstName.trim() || undefined,
-      middleName: draft.middleName.trim() || null,
-      lastName: draft.lastName.trim() || undefined,
-      email: email || null,
-      phoneNumber: phone || null,
-      address: draft.address.trim() || null,
-      profilePicture: avatarPreview ?? undefined,
+      firstName,
+      lastName,
+      profilePicture: avatarPreview ?? (draft.profilePicture || undefined),
     });
   };
 
@@ -239,9 +238,12 @@ export default function Profile() {
         <CardContent className="space-y-5">
           {editing ? (
             <>
+              <p className="text-sm text-muted-foreground mb-4">
+                You can only edit your first name, last name, and profile picture. Email and username cannot be changed.
+              </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="firstName">First Name</Label>
+                  <Label htmlFor="firstName">First Name *</Label>
                   <Input
                     id="firstName"
                     value={draft.firstName}
@@ -250,7 +252,7 @@ export default function Profile() {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="lastName">Last Name</Label>
+                  <Label htmlFor="lastName">Last Name *</Label>
                   <Input
                     id="lastName"
                     value={draft.lastName}
@@ -259,66 +261,6 @@ export default function Profile() {
                   />
                 </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="middleName">Middle Name</Label>
-                <Input
-                  id="middleName"
-                  value={draft.middleName}
-                  onChange={(e) => setDraft({ ...draft, middleName: e.target.value })}
-                  placeholder="Optional"
-                  disabled={updateMutation.isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="username">Username</Label>
-                <Input
-                  id="username"
-                  value={draft.username}
-                  onChange={(e) => setDraft({ ...draft, username: e.target.value })}
-                  placeholder="Username"
-                  disabled={updateMutation.isPending}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={draft.email}
-                  onChange={(e) => setDraft({ ...draft, email: e.target.value })}
-                  disabled={updateMutation.isPending}
-                />
-              </div>
-              {!isSuperAdmin && (
-                <>
-                  <div className="space-y-2">
-                    <Label htmlFor="phoneNumber">Phone</Label>
-                    <Input
-                      id="phoneNumber"
-                      type="tel"
-                      value={draft.phoneNumber}
-                      onChange={(e) => setDraft({ ...draft, phoneNumber: e.target.value })}
-                      placeholder="+91 9876543210"
-                      disabled={updateMutation.isPending}
-                    />
-                    {draft.phoneNumber.trim() && !validatePhone(draft.phoneNumber) && (
-                      <p className="text-xs text-destructive">
-                        Use + country code (1–3 digits) and 10-digit phone number.
-                      </p>
-                    )}
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Address</Label>
-                    <Input
-                      id="address"
-                      value={draft.address}
-                      onChange={(e) => setDraft({ ...draft, address: e.target.value })}
-                      placeholder="Address"
-                      disabled={updateMutation.isPending}
-                    />
-                  </div>
-                </>
-              )}
               <div className="flex gap-3 pt-2">
                 <Button onClick={handleSave} disabled={updateMutation.isPending}>
                   <Save className="h-4 w-4 mr-1" /> {updateMutation.isPending ? "Saving..." : "Save Changes"}

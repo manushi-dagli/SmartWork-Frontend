@@ -1,13 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { inquiriesApi } from "@/api/inquiries.api";
-import type {
-  DocumentForInquiry,
-  InquiryType,
-  AssignmentTermTemplate,
-  PaymentTermTemplate,
-} from "@/api/inquiries.api";
+import { taskRequestsApi } from "@/api/taskRequests.api";
+import type { TaskType, SubtaskWithTask } from "@/api/taskRequests.api";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,8 +16,12 @@ import {
 } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, Mail, MessageCircle, CheckCircle, XCircle } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Mail, MessageCircle, CheckCircle, XCircle, FileUp, Download, Trash2 } from "lucide-react";
+import { store } from "@/store";
 import { contactDetailsSchema } from "@/lib/validations";
+
+const SUBTASK_NONE_VALUE = "__none__";
 
 function getStatusBadgeVariant(
   status: string
@@ -42,10 +41,12 @@ export default function InquiryDetail() {
   const [contactPhoneNumber, setContactPhoneNumber] = useState("");
   const [contactPhone2CountryCode, setContactPhone2CountryCode] = useState("");
   const [contactPhone2Number, setContactPhone2Number] = useState("");
-  const [assignmentTypeId, setAssignmentTypeId] = useState("");
+  const [taskId, setTaskId] = useState("");
+  const [subtaskId, setSubtaskId] = useState("");
   const [selectedDocIds, setSelectedDocIds] = useState<Set<string>>(new Set());
-  const [assignmentTermTemplateId, setAssignmentTermTemplateId] = useState<string | null>(null);
-  const [paymentTermTemplateId, setPaymentTermTemplateId] = useState<string | null>(null);
+  const [assignmentTerms, setAssignmentTerms] = useState("");
+  const [paymentTerms, setPaymentTerms] = useState("");
+  const [paymentCost, setPaymentCost] = useState("");
   const [saved, setSaved] = useState(false);
   const [contactErrors, setContactErrors] = useState<{
     contactName?: string;
@@ -56,49 +57,45 @@ export default function InquiryDetail() {
     contactPhone2Number?: string;
   }>({});
 
-  const inquiryId = id ?? "";
+  const taskRequestId = id ?? "";
 
-  const { data: inquiry, isLoading: inquiryLoading, error: inquiryError } = useQuery({
-    queryKey: ["inquiry", inquiryId],
-    queryFn: () => inquiriesApi.getInquiry(inquiryId),
-    enabled: !!inquiryId && inquiryId !== "new",
-  });
-
-  const { data: inquiryTypes = [] } = useQuery({
-    queryKey: ["inquiry-types"],
-    queryFn: () => inquiriesApi.listInquiryTypes(),
-  });
-  const { data: docsForType = [], isLoading: docsLoading } = useQuery({
-    queryKey: ["inquiry-documents-by-type", assignmentTypeId],
-    queryFn: () => inquiriesApi.getDocumentsByInquiryType(assignmentTypeId),
-    enabled: !!assignmentTypeId,
-  });
-  const { data: assignmentTemplates = [] } = useQuery({
-    queryKey: ["assignment-term-templates"],
-    queryFn: () => inquiriesApi.listAssignmentTermTemplates(),
-  });
-  const { data: paymentTemplates = [] } = useQuery({
-    queryKey: ["payment-term-templates"],
-    queryFn: () => inquiriesApi.listPaymentTermTemplates(),
+  const { data: taskRequest, isLoading: taskRequestLoading, error: taskRequestError } = useQuery({
+    queryKey: ["task-request", taskRequestId],
+    queryFn: () => taskRequestsApi.getTaskRequest(taskRequestId),
+    enabled: !!taskRequestId && taskRequestId !== "new",
   });
 
-  // Sync local state when inquiry loads
+  const { data: taskTypes = [] } = useQuery({
+    queryKey: ["task-types"],
+    queryFn: () => taskRequestsApi.listTaskTypes(),
+  });
+  const { data: subtasksWithTask = [] } = useQuery({
+    queryKey: ["subtasks-with-task"],
+    queryFn: () => taskRequestsApi.listSubtasksWithTask(),
+  });
+  const { data: allDocuments = [], isLoading: docsLoading } = useQuery({
+    queryKey: ["documents-master"],
+    queryFn: () => taskRequestsApi.listDocuments(),
+  });
+
   useEffect(() => {
-    if (inquiry) {
-      setContactName(inquiry.contactName ?? "");
-      setContactEmail(inquiry.contactEmail ?? "");
-      setContactPhoneCountryCode(inquiry.contactPhoneCountryCode ?? "");
-      setContactPhoneNumber(inquiry.contactPhoneNumber ?? "");
-      setContactPhone2CountryCode(inquiry.contactPhone2CountryCode ?? "");
-      setContactPhone2Number(inquiry.contactPhone2Number ?? "");
-      setAssignmentTypeId(inquiry.assignmentTypeId);
-      setSelectedDocIds(new Set(inquiry.documentIds ?? []));
-      setAssignmentTermTemplateId(inquiry.assignmentTermTemplateId ?? null);
-      setPaymentTermTemplateId(inquiry.paymentTermTemplateId ?? null);
+    if (taskRequest) {
+      setContactName(taskRequest.contactName ?? "");
+      setContactEmail(taskRequest.contactEmail ?? "");
+      setContactPhoneCountryCode(taskRequest.contactPhoneCountryCode ?? "");
+      setContactPhoneNumber(taskRequest.contactPhoneNumber ?? "");
+      setContactPhone2CountryCode(taskRequest.contactPhone2CountryCode ?? "");
+      setContactPhone2Number(taskRequest.contactPhone2Number ?? "");
+      setTaskId(taskRequest.taskId);
+      setSubtaskId(taskRequest.subtaskId ?? "");
+      setSelectedDocIds(new Set(taskRequest.documentIds ?? []));
+      setAssignmentTerms(taskRequest.assignmentTerms ?? "");
+      setPaymentTerms(taskRequest.paymentTerms ?? "");
+      setPaymentCost(taskRequest.paymentCost ?? "");
     }
-  }, [inquiry]);
+  }, [taskRequest]);
 
-  const updateInquiry = useMutation({
+  const updateTaskRequest = useMutation({
     mutationFn: (payload: {
       contactName?: string | null;
       contactEmail?: string | null;
@@ -106,40 +103,60 @@ export default function InquiryDetail() {
       contactPhoneNumber?: string | null;
       contactPhone2CountryCode?: string | null;
       contactPhone2Number?: string | null;
-      assignmentTypeId?: string;
-      assignmentTermTemplateId?: string | null;
-      paymentTermTemplateId?: string | null;
-    }) => inquiriesApi.updateInquiry(inquiryId, payload),
+      taskId?: string;
+      subtaskId?: string | null;
+      assignmentTerms?: string | null;
+      paymentTerms?: string | null;
+      paymentCost?: string | null;
+    }) => taskRequestsApi.updateTaskRequest(taskRequestId, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["inquiry", inquiryId] });
+      queryClient.invalidateQueries({ queryKey: ["task-request", taskRequestId] });
       setSaved(true);
     },
   });
 
   const setDocuments = useMutation({
     mutationFn: (documentMasterIds: string[]) =>
-      inquiriesApi.setInquiryDocuments(inquiryId, documentMasterIds),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["inquiry", inquiryId] }),
+      taskRequestsApi.setTaskRequestDocuments(taskRequestId, documentMasterIds),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["task-request", taskRequestId] }),
+  });
+
+  const uploadAttachment = useMutation({
+    mutationFn: (file: File) => taskRequestsApi.uploadAttachment(taskRequestId, file),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["task-request", taskRequestId] }),
+  });
+
+  const deleteAttachment = useMutation({
+    mutationFn: (attachmentId: string) => taskRequestsApi.deleteAttachment(taskRequestId, attachmentId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["task-request", taskRequestId] }),
   });
 
   const markSent = useMutation({
     mutationFn: (opts: { emailed?: boolean; whatsapp?: boolean }) =>
-      inquiriesApi.markSent(inquiryId, opts),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["inquiry", inquiryId] }),
+      taskRequestsApi.markSent(taskRequestId, opts),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["task-request", taskRequestId] }),
   });
 
   const acceptMutation = useMutation({
-    mutationFn: () => inquiriesApi.acceptInquiry(inquiryId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["inquiry", inquiryId] }),
+    mutationFn: () => taskRequestsApi.acceptTaskRequest(taskRequestId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["task-request", taskRequestId] }),
   });
 
   const rejectMutation = useMutation({
-    mutationFn: () => inquiriesApi.rejectInquiry(inquiryId),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["inquiry", inquiryId] }),
+    mutationFn: () => taskRequestsApi.rejectTaskRequest(taskRequestId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["task-request", taskRequestId] }),
   });
 
-  const isPending = inquiry?.status === "PENDING";
-  const canEdit = isPending && !inquiry?.clientId;
+  const isPending = taskRequest?.status === "PENDING";
+  const canEdit = isPending && !taskRequest?.clientId;
+
+  const hasContact =
+    (contactName?.trim() ?? "") !== "" &&
+    ((contactEmail?.trim() ?? "") !== "" ||
+      ((contactPhoneCountryCode?.trim() ?? "") !== "" && (contactPhoneNumber?.trim() ?? "") !== ""));
+  const hasTask = (taskId?.trim() ?? "") !== "";
+  const hasAttachments = (taskRequest?.attachments?.length ?? 0) > 0;
+  const canSendEmailWhatsApp = canEdit && hasContact && hasTask && hasAttachments;
 
   const handleSaveContact = () => {
     setContactErrors({});
@@ -164,7 +181,7 @@ export default function InquiryDetail() {
       return;
     }
     const data = result.data;
-    updateInquiry.mutate({
+    updateTaskRequest.mutate({
       contactName: data.contactName ?? null,
       contactEmail: data.contactEmail ?? null,
       contactPhoneCountryCode: data.contactPhoneCountryCode ?? null,
@@ -175,7 +192,10 @@ export default function InquiryDetail() {
   };
 
   const handleSaveType = () => {
-    updateInquiry.mutate({ assignmentTypeId: assignmentTypeId || undefined });
+    updateTaskRequest.mutate({
+      taskId: taskId || undefined,
+      subtaskId: subtaskId || null,
+    });
   };
 
   const handleAttachDocuments = () => {
@@ -183,25 +203,26 @@ export default function InquiryDetail() {
   };
 
   const handleSaveTerms = () => {
-    updateInquiry.mutate({
-      assignmentTermTemplateId: assignmentTermTemplateId ?? null,
-      paymentTermTemplateId: paymentTermTemplateId ?? null,
+    updateTaskRequest.mutate({
+      assignmentTerms: assignmentTerms.trim() || null,
+      paymentTerms: paymentTerms.trim() || null,
+      paymentCost: paymentCost.trim() || null,
     });
   };
 
-  if (!inquiryId || inquiryId === "new") {
+  if (!taskRequestId || taskRequestId === "new") {
     navigate("/inquiries", { replace: true });
     return null;
   }
 
-  if (inquiryLoading || !inquiry) {
+  if (taskRequestLoading || !taskRequest) {
     return (
       <div className="space-y-6">
         <Button variant="ghost" size="icon" onClick={() => navigate("/inquiries")}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
         <div className="p-8 text-center text-muted-foreground">
-          {inquiryError ? "Inquiry not found." : "Loading…"}
+          {taskRequestError ? "Inquiry not found." : "Loading…"}
         </div>
       </div>
     );
@@ -223,11 +244,11 @@ export default function InquiryDetail() {
           </Button>
           <div>
             <h1 className="text-2xl font-bold tracking-tight">
-              {inquiry.contactName || inquiry.contactEmail || "Inquiry"}
+              {taskRequest.contactName || taskRequest.contactEmail || "Inquiry"}
             </h1>
             <p className="text-muted-foreground text-sm mt-1 flex items-center gap-2">
-              <Badge variant={getStatusBadgeVariant(inquiry.status)}>
-                {inquiry.status}
+              <Badge variant={getStatusBadgeVariant(taskRequest.status)}>
+                {taskRequest.status}
               </Badge>
               {saved && <span className="text-green-600 text-xs">Saved</span>}
             </p>
@@ -235,7 +256,6 @@ export default function InquiryDetail() {
         </div>
       </div>
 
-      {/* 1. Client details */}
       <Card>
         <CardHeader>
           <CardTitle>Client details</CardTitle>
@@ -323,63 +343,79 @@ export default function InquiryDetail() {
             </div>
           </div>
           {canEdit && (
-            <Button onClick={handleSaveContact} disabled={updateInquiry.isPending}>
+            <Button onClick={handleSaveContact} disabled={updateTaskRequest.isPending}>
               Save contact details
             </Button>
           )}
         </CardContent>
       </Card>
 
-      {/* 2. Inquiry type */}
       <Card>
         <CardHeader>
-          <CardTitle>Inquiry type</CardTitle>
-          <CardDescription>Select the type of inquiry.</CardDescription>
+          <CardTitle>Task (service)</CardTitle>
+          <CardDescription>Which service this inquiry is for. Select a subtask — task is set automatically and is read-only.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <Select
-            value={assignmentTypeId}
-            onValueChange={setAssignmentTypeId}
-            disabled={!canEdit || inquiryTypes.length === 0}
-          >
-            <SelectTrigger className="w-full max-w-xs">
-              <SelectValue placeholder="Select type" />
-            </SelectTrigger>
-            <SelectContent>
-              {inquiryTypes.map((t: InquiryType) => (
-                <SelectItem key={t.id} value={t.id}>
-                  {t.name}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <div className="space-y-2">
+            <Label>Subtask (optional)</Label>
+            <Select
+              value={subtaskId && subtaskId.trim() !== "" ? subtaskId : SUBTASK_NONE_VALUE}
+              onValueChange={(val) => {
+                const actual = val === SUBTASK_NONE_VALUE ? "" : (val ?? "");
+                setSubtaskId(actual);
+                const sub = (subtasksWithTask as SubtaskWithTask[]).find((s) => s.id === actual);
+                if (sub) setTaskId(sub.taskId);
+              }}
+              disabled={!canEdit}
+            >
+              <SelectTrigger className="w-full max-w-md">
+                <SelectValue placeholder="Select subtask — task will auto-fill" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value={SUBTASK_NONE_VALUE}>— None —</SelectItem>
+                {(subtasksWithTask as SubtaskWithTask[]).map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.taskName} — {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label>Task (read-only)</Label>
+            <p className="text-sm py-2 px-3 rounded-md border bg-muted/50 text-muted-foreground max-w-md">
+              {(() => {
+                const sub = (subtasksWithTask as SubtaskWithTask[]).find((s) => s.id === subtaskId);
+                if (sub) return sub.taskName;
+                const task = taskTypes.find((t: TaskType) => t.id === taskId);
+                return task?.name ?? (taskId ? "—" : "Select a subtask to set task");
+              })()}
+            </p>
+          </div>
           {canEdit && (
-            <Button onClick={handleSaveType} disabled={updateInquiry.isPending}>
-              Save inquiry type
+            <Button onClick={handleSaveType} disabled={updateTaskRequest.isPending}>
+              Save task
             </Button>
           )}
         </CardContent>
       </Card>
 
-      {/* 3. Document checklist */}
       <Card>
         <CardHeader>
           <CardTitle>Document checklist</CardTitle>
           <CardDescription>
-            Documents for this inquiry type. Check and attach to inquiry.
+            Documents from master list. Check and attach to inquiry.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {docsLoading && <p className="text-muted-foreground text-sm">Loading documents…</p>}
-          {!docsLoading && docsForType.length === 0 && (
-            <p className="text-muted-foreground text-sm">
-              Select an inquiry type to see documents, or none are configured.
-            </p>
+          {!docsLoading && allDocuments.length === 0 && (
+            <p className="text-muted-foreground text-sm">No documents in master list.</p>
           )}
-          {!docsLoading && docsForType.length > 0 && (
+          {!docsLoading && allDocuments.length > 0 && (
             <>
-              <div className="space-y-2">
-                {docsForType.map((doc: DocumentForInquiry) => (
+              <div className="space-y-2 max-h-48 overflow-y-auto">
+                {allDocuments.map((doc) => (
                   <div key={doc.id} className="flex items-center gap-2">
                     <Checkbox
                       id={`doc-${doc.id}`}
@@ -409,97 +445,174 @@ export default function InquiryDetail() {
         </CardContent>
       </Card>
 
-      {/* 4. Assignment & payment terms */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Attached files</CardTitle>
+          <CardDescription>
+            Images or PDFs saved with this inquiry. At least one attachment is required before you can mark email/WhatsApp as sent.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {(taskRequest?.attachments?.length ?? 0) === 0 && !canEdit && (
+            <p className="text-muted-foreground text-sm">No files attached.</p>
+          )}
+          {(taskRequest?.attachments?.length ?? 0) > 0 && (
+            <ul className="space-y-2">
+              {(taskRequest?.attachments ?? []).map((att) => (
+                <li
+                  key={att.id}
+                  className="flex items-center justify-between gap-2 rounded-md border p-2 text-sm"
+                >
+                  <span className="truncate">{att.fileName}</span>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-8"
+                      onClick={async () => {
+                        const baseUrl = import.meta.env.VITE_API_URL ?? "";
+                        const url = `${baseUrl}/api/task-requests/${taskRequestId}/attachments/${att.id}/file`;
+                        const token = store.getState().auth.accessToken;
+                        const res = await fetch(url, {
+                          credentials: "include",
+                          headers: token ? { Authorization: `Bearer ${token}` } : {},
+                        });
+                        if (!res.ok) return;
+                        const blob = await res.blob();
+                        const a = document.createElement("a");
+                        a.href = URL.createObjectURL(blob);
+                        a.download = att.fileName;
+                        a.click();
+                        URL.revokeObjectURL(a.href);
+                      }}
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      Download
+                    </Button>
+                    {canEdit && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-8 text-destructive hover:text-destructive"
+                        onClick={() => deleteAttachment.mutate(att.id)}
+                        disabled={deleteAttachment.isPending}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+          {canEdit && (
+            <label className="flex items-center justify-center gap-2 rounded-md border border-dashed p-3 cursor-pointer hover:bg-muted/50 text-sm text-muted-foreground">
+              <FileUp className="h-4 w-4" />
+              Add file (image or PDF, max 5MB)
+              <input
+                type="file"
+                accept="image/jpeg,image/png,image/webp,application/pdf"
+                className="sr-only"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) uploadAttachment.mutate(file);
+                  e.target.value = "";
+                }}
+                disabled={uploadAttachment.isPending}
+              />
+            </label>
+          )}
+        </CardContent>
+      </Card>
+
       <Card>
         <CardHeader>
           <CardTitle>Terms</CardTitle>
-          <CardDescription>Assignment and payment term templates.</CardDescription>
+          <CardDescription>Assignment terms, payment terms, and payment/cost (per inquiry).</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label>Assignment terms</Label>
-              <Select
-                value={assignmentTermTemplateId ?? ""}
-                onValueChange={(v) => setAssignmentTermTemplateId(v || null)}
-                disabled={!canEdit}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select template" />
-                </SelectTrigger>
-                <SelectContent>
-                  {assignmentTemplates.map((t: AssignmentTermTemplate) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-2">
-              <Label>Payment terms</Label>
-              <Select
-                value={paymentTermTemplateId ?? ""}
-                onValueChange={(v) => setPaymentTermTemplateId(v || null)}
-                disabled={!canEdit}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select template" />
-                </SelectTrigger>
-                <SelectContent>
-                  {paymentTemplates.map((t: PaymentTermTemplate) => (
-                    <SelectItem key={t.id} value={t.id}>
-                      {t.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="space-y-2">
+            <Label>Assignment terms</Label>
+            <Textarea
+              value={assignmentTerms}
+              onChange={(e) => setAssignmentTerms(e.target.value)}
+              disabled={!canEdit}
+              placeholder="Assignment terms for this inquiry"
+              rows={3}
+              className="resize-none"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Payment terms</Label>
+            <Textarea
+              value={paymentTerms}
+              onChange={(e) => setPaymentTerms(e.target.value)}
+              disabled={!canEdit}
+              placeholder="Payment terms for this inquiry"
+              rows={3}
+              className="resize-none"
+            />
+          </div>
+          <div className="space-y-2">
+            <Label>Payment / cost</Label>
+            <Input
+              value={paymentCost}
+              onChange={(e) => setPaymentCost(e.target.value)}
+              disabled={!canEdit}
+              placeholder="e.g. INR or Rupees"
+            />
           </div>
           {canEdit && (
-            <Button onClick={handleSaveTerms} disabled={updateInquiry.isPending}>
+            <Button onClick={handleSaveTerms} disabled={updateTaskRequest.isPending}>
               Save terms
             </Button>
           )}
         </CardContent>
       </Card>
 
-      {/* 5. Send to client */}
       <Card>
         <CardHeader>
           <CardTitle>Send to client</CardTitle>
-          <CardDescription>Mark when email or WhatsApp was sent (no actual send in app).</CardDescription>
+          <CardDescription>
+            Mark when email or WhatsApp was sent (no actual send in app). Enable by filling contact, task, and at least one attached file.
+          </CardDescription>
         </CardHeader>
-        <CardContent className="flex flex-wrap gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => markSent.mutate({ emailed: true })}
-            disabled={!canEdit || markSent.isPending}
-          >
-            <Mail className="h-4 w-4 mr-2" />
-            Mark as sent (Email)
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => markSent.mutate({ whatsapp: true })}
-            disabled={!canEdit || markSent.isPending}
-          >
-            <MessageCircle className="h-4 w-4 mr-2" />
-            Mark as sent (WhatsApp)
-          </Button>
-          {(inquiry.emailedAt || inquiry.whatsappSentAt) && (
-            <span className="text-muted-foreground text-sm self-center">
-              {inquiry.emailedAt && "Email sent " + new Date(inquiry.emailedAt).toLocaleString()}
-              {inquiry.emailedAt && inquiry.whatsappSentAt && " · "}
-              {inquiry.whatsappSentAt && "WhatsApp sent " + new Date(inquiry.whatsappSentAt).toLocaleString()}
+        <CardContent className="space-y-2">
+          {!canSendEmailWhatsApp && canEdit && (
+            <p className="text-sm text-muted-foreground">
+              Fill in contact details, select a subtask (task), and attach at least one file to enable sending.
+            </p>
+          )}
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => markSent.mutate({ emailed: true })}
+              disabled={!canSendEmailWhatsApp || markSent.isPending}
+            >
+              <Mail className="h-4 w-4 mr-2" />
+              Mark as sent (Email)
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => markSent.mutate({ whatsapp: true })}
+              disabled={!canSendEmailWhatsApp || markSent.isPending}
+            >
+              <MessageCircle className="h-4 w-4 mr-2" />
+              Mark as sent (WhatsApp)
+            </Button>
+          </div>
+          {(taskRequest?.emailedAt || taskRequest?.whatsappSentAt) && (
+            <span className="text-muted-foreground text-sm block">
+              {taskRequest?.emailedAt && "Email sent " + new Date(taskRequest.emailedAt).toLocaleString()}
+              {taskRequest?.emailedAt && taskRequest?.whatsappSentAt && " · "}
+              {taskRequest?.whatsappSentAt && "WhatsApp sent " + new Date(taskRequest.whatsappSentAt).toLocaleString()}
             </span>
           )}
         </CardContent>
       </Card>
 
-      {/* 6. Client decision */}
       {isPending && (
         <Card>
           <CardHeader>

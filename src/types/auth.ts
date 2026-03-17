@@ -5,7 +5,7 @@ export interface AuthPermission {
   scope: string | null;
 }
 
-/** Current user from Smart Work POST /api/auth/login or GET /api/auth/me (employee or super admin). */
+/** Current user from Smart Work POST /api/auth/login or GET /api/auth/session (employee or super admin). */
 export interface AuthUser {
   id: string;
   username: string | null;

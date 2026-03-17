@@ -64,7 +64,7 @@ This app uses the **Smart Work** backend for authentication and role-based acces
    Dashboard, Tasks, Team, and Analytics require authentication. After login, the app stores the JWT and user in Redux + localStorage and sends the token (and cookies) with API requests.
 
 4. **RBAC in the UI**  
-   Use the `useAbility()` hook (from `@/hooks/useAbility`) to gate UI by permission, e.g. `ability.can('create', 'Employee')`. Roles and permissions come from `GET /api/auth/me` and mirror the Smart Work backend CASL rules.
+   Use the `useAbility()` hook (from `@/hooks/useAbility`) to gate UI by permission, e.g. `ability.can('create', 'Employee')`. Roles and permissions come from `GET /api/auth/session` (on session restore) and mirror the Smart Work backend CASL rules.
 
 5. **Logout**  
    Use the "Log out" action in the sidebar footer; it calls Smart Work’s `POST /api/auth/logout` and clears local auth state.

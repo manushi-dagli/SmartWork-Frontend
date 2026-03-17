@@ -1,7 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { inquiriesApi } from "@/api/inquiries.api";
-import type { Inquiry, InquiryStatus } from "@/api/inquiries.api";
+import { taskRequestsApi } from "@/api/taskRequests.api";
+import type { TaskRequest, TaskRequestStatus } from "@/api/taskRequests.api";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,14 +15,14 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { FileQuestion, Plus } from "lucide-react";
 
-const STATUS_OPTIONS: { value: InquiryStatus | ""; label: string }[] = [
+const STATUS_OPTIONS: { value: TaskRequestStatus | ""; label: string }[] = [
   { value: "", label: "All" },
   { value: "PENDING", label: "Pending" },
   { value: "ACCEPTED", label: "Accepted" },
   { value: "REJECTED", label: "Rejected" },
 ];
 
-function statusBadgeVariant(status: InquiryStatus): "default" | "secondary" | "destructive" | "outline" {
+function statusBadgeVariant(status: TaskRequestStatus): "default" | "secondary" | "destructive" | "outline" {
   switch (status) {
     case "PENDING":
       return "secondary";
@@ -51,27 +51,27 @@ function canCreateInquiry(roleValue: string | undefined): boolean {
 export default function Inquiries() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const statusFilter = (searchParams.get("status") as InquiryStatus) || undefined;
+  const statusFilter = (searchParams.get("status") as TaskRequestStatus) || undefined;
   const { user } = useAuth();
   const canCreate = canCreateInquiry(user?.roleValue);
 
   const { data: list = [], isLoading, error } = useQuery({
-    queryKey: ["inquiries", statusFilter],
-    queryFn: () => inquiriesApi.listInquiries(statusFilter),
+    queryKey: ["task-requests", statusFilter],
+    queryFn: () => taskRequestsApi.listTaskRequests(statusFilter),
   });
-  const { data: inquiryTypes = [] } = useQuery({
-    queryKey: ["inquiry-types"],
-    queryFn: () => inquiriesApi.listInquiryTypes(),
+  const { data: taskTypes = [] } = useQuery({
+    queryKey: ["task-types"],
+    queryFn: () => taskRequestsApi.listTaskTypes(),
   });
-  const typeNameById = Object.fromEntries(inquiryTypes.map((t) => [t.id, t.name]));
+  const typeNameById = Object.fromEntries(taskTypes.map((t) => [t.id, t.name]));
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Inquiry register</h1>
+          <h1 className="text-2xl font-bold tracking-tight">Inquiries</h1>
           <p className="text-muted-foreground text-sm mt-1">
-            Manage client inquiries from visit through accept or reject
+            When a client asks for a service (task), it's an inquiry. Manage from visit through accept or reject.
           </p>
         </div>
         {canCreate && (
@@ -124,34 +124,34 @@ export default function Inquiries() {
             <TableHeader>
               <TableRow>
                 <TableHead>Contact</TableHead>
-                <TableHead>Type</TableHead>
+                <TableHead>Task (service)</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead>Created</TableHead>
                 <TableHead className="w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {list.map((inquiry: Inquiry) => (
+              {list.map((tr: TaskRequest) => (
                 <TableRow
-                  key={inquiry.id}
+                  key={tr.id}
                   className="cursor-pointer"
-                  onClick={() => navigate(`/inquiries/${inquiry.id}`)}
+                  onClick={() => navigate(`/inquiries/${tr.id}`)}
                 >
                   <TableCell className="font-medium">
-                    {inquiry.contactName || inquiry.contactEmail || "—"}
+                    {tr.contactName || tr.contactEmail || "—"}
                   </TableCell>
-                  <TableCell>{typeNameById[inquiry.assignmentTypeId] ?? "—"}</TableCell>
+                  <TableCell>{typeNameById[tr.taskId] ?? "—"}</TableCell>
                   <TableCell>
-                    <Badge variant={statusBadgeVariant(inquiry.status)}>{inquiry.status}</Badge>
+                    <Badge variant={statusBadgeVariant(tr.status)}>{tr.status}</Badge>
                   </TableCell>
-                  <TableCell className="text-muted-foreground">{formatDate(inquiry.createdAt)}</TableCell>
+                  <TableCell className="text-muted-foreground">{formatDate(tr.createdAt)}</TableCell>
                   <TableCell>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={(e) => {
                         e.stopPropagation();
-                        navigate(`/inquiries/${inquiry.id}`);
+                        navigate(`/inquiries/${tr.id}`);
                       }}
                     >
                       Open
